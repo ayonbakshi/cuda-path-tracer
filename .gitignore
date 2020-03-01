@@ -1,0 +1,6 @@
+.vscode
+*.o
+*.d
+*.mtl
+src/*.bmp
+assets/hdrs/*
