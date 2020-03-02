@@ -8,7 +8,7 @@ class Material {
 public:
     __host__ __device__ Material(const vec3 &color): color{color} {}
     
-    __host__ __device__ vec3 get_col() { return color; }
+    __host__ __device__ vec3 get_col() const { return color; }
     
 };
 

@@ -7,6 +7,7 @@
 
 #define EPSILON 1e-10f
 #define INF 1e10f
+#define M_PI_F 3.14159265358979323846f
 
 class vec3 {
 public:

@@ -5,6 +5,7 @@
 #include "../include/object.cuh"
 #include "../include/material.cuh"
 #include "../include/scene.cuh"
+#include "../include/camera.cuh"
 
 // limited version of checkCudaErrors from helper_cuda.h in CUDA examples
 #define checkCudaErrors(val) check_cuda( (val), #val, __FILE__, __LINE__ )
@@ -24,13 +25,13 @@ __device__ inline vec3 trace(const vec3 &orig, const vec3 &dir, Scene *scene) {
     const Object *closest = scene->hit_scene(orig, dir, hit_loc, hit_norm);
     // const Object *closest = 0;
     if (closest) {
-        return hit_norm;
+        return closest->mat.get_col();
     } else {
         return vec3(0.1,0.3,0.8);
     }
 }
 
-__global__ void render(vec3 *fb, Scene **scene, /*camera stuff*/ int max_x, int max_y, float invWidth, float invHeight, float angle, float aspectratio) {
+__global__ void render(vec3 *fb, Scene **scene, Camera **cam, /*camera stuff*/ int max_x, int max_y, float invWidth, float invHeight, float angle, float aspectratio) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     if((i >= max_x) || (j >= max_y)) return;
@@ -42,6 +43,7 @@ __global__ void render(vec3 *fb, Scene **scene, /*camera stuff*/ int max_x, int 
 
     vec3 orig(0);
 
+    // fb[j*max_x + i] = trace((*cam)->get_origin(), (*cam)->ray_dir_at_pixel(i, j), *scene);
     fb[j*max_x + i] = trace(orig, raydir, *scene);
 }
 
@@ -56,16 +58,23 @@ void create_scene(Scene **scene, Object **d_list, int num_objects) {
 }
 
 void run(int width, int height, int tx, int ty, float *pixels) {
+
+    float fov = 30;
+    vec3 cam_origin(0,0,0);
+    vec3 cam_dir(0,0,-1);
+
+    Camera cam{width, height, fov, cam_origin, cam_dir};
+    Camera **d_cam;
+    cudaMalloc((void **)&d_cam, sizeof(Camera*));
+    cudaMemcpy(d_cam, &cam, sizeof(Camera), cudaMemcpyHostToDevice);
+
     int num_pixels = width*height;
     size_t fb_size = num_pixels*sizeof(vec3);
-
-
 
     // allocate FB
     vec3 *fb;
     checkCudaErrors(cudaMallocManaged((void **)&fb, fb_size));
 
-    // Render our buffer
     dim3 blocks(width/tx+1,height/ty+1);
     dim3 threads(tx,ty);
 
@@ -82,11 +91,10 @@ void run(int width, int height, int tx, int ty, float *pixels) {
 
     // replace this with camera stuff later
     float invWidth = 1 / float(width), invHeight = 1 / float(height); 
-    float fov = 30, aspectratio = width / float(height); 
-    float angle = tan(M_PI * 0.5 * fov / 180.); 
+    float aspectratio = width / float(height); 
+    float angle = tan(M_PI_F * 0.5 * fov / 180.); 
 
-
-    render<<<blocks, threads>>>(fb, scene, width, height, invWidth, invHeight, angle, aspectratio);
+    render<<<blocks, threads>>>(fb, scene, d_cam, width, height, invWidth, invHeight, angle, aspectratio);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
     

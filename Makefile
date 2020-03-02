@@ -52,7 +52,7 @@ INC_DIR = include
 EXE = main
 
 # Object files:
-OBJS = $(OBJ_DIR)/main.o $(OBJ_DIR)/kernels.o $(OBJ_DIR)/object.o
+OBJS = $(OBJ_DIR)/main.o $(OBJ_DIR)/kernels.o $(OBJ_DIR)/object.o $(OBJ_DIR)/camera.o
 
 ##########################################################
 
